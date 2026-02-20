@@ -12,6 +12,7 @@ import {
   BookOpen, ArrowRight, Loader2, CheckCircle2,
   Award, FlaskConical, TrendingUp, Plus, AlertCircle, X,
 } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
 
 const ACTIVITY_ICONS: Record<string, React.ReactNode> = {
   enrolled: <BookOpen className="w-4 h-4 text-primary" />,
@@ -91,6 +92,7 @@ export default function StudentDashboard() {
   const { user, profile } = useAuth();
   const { enrollments, activity, totalCompleted, totalProgress, loading, enroll } = useStudentData();
   const [showEnroll, setShowEnroll] = useState(false);
+  const { toast } = useToast();
 
   const userName = profile?.name || user?.displayName || 'Student';
 
@@ -109,7 +111,16 @@ export default function StudentDashboard() {
       {showEnroll && (
         <EnrollModal
           onClose={() => setShowEnroll(false)}
-          onEnroll={enroll}
+          onEnroll={async (code) => {
+            const res = await enroll(code);
+            if (res.success) {
+              toast({
+                title: "Enrolled Successfully!",
+                description: "The course has been added to your dashboard.",
+              });
+            }
+            return res;
+          }}
         />
       )}
 

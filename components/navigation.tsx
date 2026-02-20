@@ -35,18 +35,6 @@ export function Navigation() {
 
           {/* Desktop Navigation */}
           <div className="hidden md:flex items-center gap-8">
-            <Link
-              href="#features"
-              className="text-sm text-muted-foreground hover:text-foreground transition-colors"
-            >
-              Features
-            </Link>
-            <Link
-              href="#how-it-works"
-              className="text-sm text-muted-foreground hover:text-foreground transition-colors"
-            >
-              How It Works
-            </Link>
             {user && profile && (
               <Link
                 href={`/dashboard/${profile.role}`}
@@ -103,20 +91,6 @@ export function Navigation() {
         {/* Mobile Navigation */}
         {isOpen && (
           <div className="md:hidden pb-4 space-y-3">
-            <Link
-              href="#features"
-              className="block text-sm text-muted-foreground hover:text-foreground transition-colors py-2"
-              onClick={() => setIsOpen(false)}
-            >
-              Features
-            </Link>
-            <Link
-              href="#how-it-works"
-              className="block text-sm text-muted-foreground hover:text-foreground transition-colors py-2"
-              onClick={() => setIsOpen(false)}
-            >
-              How It Works
-            </Link>
             {user && profile && (
               <Link
                 href={`/dashboard/${profile.role}`}

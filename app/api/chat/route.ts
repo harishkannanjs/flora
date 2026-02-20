@@ -40,9 +40,14 @@ export async function POST(req: Request) {
 
     // Specialized prompt for Course Design mode
     if (mode === 'designer' && role === 'educator') {
+      const { title, description } = courseContext || {};
       systemPrompt = `You are the "Flora Course Architect". 
         Your goal is to help educators design professional, high-impact biotechnology courses for the Flora platform.
         
+        ${title ? `IMPORTANT: The user wants to design a course titled "${title}".` : ''}
+        ${description ? `INITIAL DESCRIPTION PROVIDED: "${description}"` : ''}
+        ${(title || description) ? `Always prioritize and build upon these initial details.` : ''}
+
         PHASES OF INTERACTION:
         1. STRATEGIZE: Brainstorm topics, target audience, and learning objectives.
         2. DRAFT: Outline the lesson structure and key concepts.
@@ -53,8 +58,8 @@ export async function POST(req: Request) {
         - Ensure scientific accuracy and depth.
         - When ready, output ONLY the final JSON block:
         {
-          "title": "Course Title",
-          "description": "Engaging summary",
+          "title": "${title || 'Course Title'}",
+          "description": "${description || 'Engaging summary'}",
           "totalLessons": 10,
           "topics": ["Gene Editing", "CRISPR", ...],
           "lessons": [
@@ -65,32 +70,61 @@ export async function POST(req: Request) {
     }
 
     // Grounding for specific course context
-    if (courseContext) {
-      systemPrompt += `\n\nCURRENT CONTEXT: You are currently assisting the user within the course "${courseContext.title}". 
-            Focus your answers specifically on the details of this course and its topics: ${courseContext.topics.join(', ')}.`;
+    if (courseContext && courseContext.title) {
+      systemPrompt += `\n\nCURRENT CONTEXT: You are currently assisting the user within the course "${courseContext.title}".`;
+      if (courseContext.topics && Array.isArray(courseContext.topics) && courseContext.topics.length > 0) {
+        systemPrompt += ` Focus your answers specifically on the topics: ${courseContext.topics.join(', ')}.`;
+      }
     }
 
     // Initialize the model
     const model = genAI.getGenerativeModel({
-      model: 'gemini-2.5-flash',
+      model: 'gemini-1.5-flash',
       systemInstruction: systemPrompt,
     });
 
     const lastMessage = messages[messages.length - 1].content;
-    const history = messages.slice(0, -1).map((m: any) => ({
+    let history = messages.slice(0, -1).map((m: any) => ({
       role: m.role === 'user' ? 'user' : 'model',
       parts: [{ text: m.content }],
     }));
+
+    // Gemini API requirement: History must start with a user message
+    if (history.length > 0 && history[0].role === 'model') {
+      history.unshift({
+        role: 'user',
+        parts: [{ text: "Hello! Let's get started." }],
+      });
+    }
 
     const chat = model.startChat({
       history: history,
     });
 
-    const result = await chat.sendMessage(lastMessage);
-    const response = await result.response;
-    const text = response.text();
+    const result = await chat.sendMessageStream(lastMessage);
 
-    return NextResponse.json({ content: text });
+    // Create a streaming response
+    const stream = new ReadableStream({
+      async start(controller) {
+        const encoder = new TextEncoder();
+        try {
+          for await (const chunk of result.stream) {
+            const text = chunk.text();
+            if (text) {
+              controller.enqueue(encoder.encode(text));
+            }
+          }
+        } catch (error) {
+          console.error("Streaming error:", error);
+        } finally {
+          controller.close();
+        }
+      },
+    });
+
+    return new Response(stream, {
+      headers: { 'Content-Type': 'text/plain; charset=utf-8' },
+    });
   } catch (error) {
     console.error('Chat API Error:', error);
     return NextResponse.json({ error: 'Failed to generate response' }, { status: 500 });

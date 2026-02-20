@@ -62,12 +62,34 @@ export function AICompanion({ role, courseContext }: AICompanionProps) {
                 }),
             });
 
-            const data = await response.json();
-            if (data.content) {
-                setMessages((prev) => [...prev, { role: 'assistant', content: data.content }]);
+            if (!response.ok) throw new Error('Failed to fetch');
+
+            const reader = response.body?.getReader();
+            const decoder = new TextEncoder();
+            const textDecoder = new TextDecoder();
+
+            if (!reader) throw new Error('No reader available');
+
+            // Add placeholder for assistant message
+            setMessages((prev) => [...prev, { role: 'assistant', content: '' }]);
+
+            let fullText = '';
+            while (true) {
+                const { done, value } = await reader.read();
+                if (done) break;
+
+                const chunk = textDecoder.decode(value, { stream: true });
+                fullText += chunk;
+
+                setMessages((prev) => {
+                    const next = [...prev];
+                    next[next.length - 1].content = fullText;
+                    return next;
+                });
             }
         } catch (error) {
             console.error('Chat error:', error);
+            setMessages((prev) => [...prev, { role: 'assistant', content: "I'm sorry, I encountered an error. Please try again." }]);
         } finally {
             setLoading(false);
         }

@@ -10,13 +10,13 @@ import { Label } from '@/components/ui/label';
 import { Progress } from '@/components/ui/progress';
 import { useAuth } from '@/components/auth-provider';
 import { useEducatorData } from '@/hooks/use-educator-data';
+import { useToast } from '@/hooks/use-toast';
 import {
   BookOpen, Plus, Copy, Check, Users, Loader2,
   AlertCircle, GraduationCap, X, TrendingUp, ArrowRight,
   Sparkles,
 } from 'lucide-react';
 import { AICourseDesigner } from '@/components/ai-course-designer';
-import { useToast } from '@/hooks/use-toast';
 
 function CopyButton({ text }: { text: string }) {
   const [copied, setCopied] = useState(false);
@@ -113,6 +113,14 @@ export default function EducatorDashboard() {
   const [showAIDesigner, setShowAIDesigner] = useState(false);
   const [aiInitialData, setAiInitialData] = useState<{ title: string; description: string } | null>(null);
   const { toast } = useToast();
+
+  const handleCopyCode = (code: string) => {
+    navigator.clipboard.writeText(code);
+    toast({
+      title: "Code Copied!",
+      description: `Enrollment code ${code} copied to clipboard.`,
+    });
+  };
 
   const userName = profile?.name || user?.displayName || 'Educator';
 
@@ -218,11 +226,28 @@ export default function EducatorDashboard() {
             ) : (
               <div className="grid sm:grid-cols-2 gap-4">
                 {courses.map((course) => (
-                  <Card key={course.id} className="p-5 border border-primary/10 bg-card hover:border-primary/40 hover:shadow-xl transition-all duration-300 group cursor-pointer rounded-2xl">
+                  <Card key={course.id} className="p-5 border border-primary/10 bg-card hover:border-primary/40 hover:shadow-xl transition-all duration-300 group rounded-2xl">
                     <div className="flex justify-between items-start mb-3">
                       <h4 className="font-bold text-foreground text-base line-clamp-2 leading-tight group-hover:text-primary transition-colors">{course.title}</h4>
-                      <div className="bg-primary/10 px-3 py-1.5 rounded-xl text-sm font-mono font-bold text-primary border border-primary/20 shadow-sm">
-                        {course.enrollCode}
+                      <div className="flex items-center gap-2">
+                        <div className="bg-primary/10 px-3 py-1.5 rounded-xl text-sm font-mono font-bold text-primary border border-primary/20 shadow-sm">
+                          {course.enrollCode}
+                        </div>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 rounded-lg hover:bg-primary/10 text-primary/60 hover:text-primary transition-colors"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            navigator.clipboard.writeText(course.enrollCode);
+                            toast({
+                              title: "Code Copied!",
+                              description: `Enrollment code ${course.enrollCode} copied to clipboard.`,
+                            });
+                          }}
+                        >
+                          <Copy className="w-4 h-4" />
+                        </Button>
                       </div>
                     </div>
                     <div className="flex items-center justify-between mt-auto pt-4 border-t border-border/50">
@@ -230,7 +255,11 @@ export default function EducatorDashboard() {
                         <Users className="w-3.5 h-3.5 text-blue-500" />
                         {course.enrolledCount || 0} Students
                       </div>
-                      <ArrowRight className="w-4 h-4 text-primary opacity-0 group-hover:opacity-100 group-hover:translate-x-1 transition-all" />
+                      <Link href={`/dashboard/educator/courses/${course.id}`}>
+                        <Button variant="ghost" size="sm" className="h-8 text-xs font-bold text-primary hover:bg-primary/5 px-2">
+                          Manage <ArrowRight className="w-3.5 h-3.5 ml-1" />
+                        </Button>
+                      </Link>
                     </div>
                   </Card>
                 ))}

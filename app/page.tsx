@@ -50,17 +50,21 @@ export default function Home() {
           </div>
 
           <div className="flex flex-col sm:flex-row gap-4 pt-4 justify-center">
-            <Button size="lg" className="bg-primary hover:bg-primary/90 text-base text-white font-medium px-8">
-              Start Training
-              <ArrowRight className="ml-2 w-4 h-4" />
-            </Button>
-            <Button
-              size="lg"
-              variant="outline"
-              className="text-base font-medium px-8"
-            >
-              Explore Simulator
-            </Button>
+            <Link href="/auth/sign-up">
+              <Button size="lg" className="bg-primary hover:bg-primary/90 text-base text-white font-medium px-8 w-full sm:w-auto">
+                Start Training
+                <ArrowRight className="ml-2 w-4 h-4" />
+              </Button>
+            </Link>
+            <Link href="#features">
+              <Button
+                size="lg"
+                variant="outline"
+                className="text-base font-medium px-8 w-full sm:w-auto"
+              >
+                Explore Features
+              </Button>
+            </Link>
           </div>
         </div>
       </section>
@@ -263,17 +267,21 @@ export default function Home() {
             From memorization to mastery. From theory to decision-making.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center pt-6">
-            <Button size="lg" className="bg-primary hover:bg-primary/90 text-base text-white font-medium px-8">
-              Start Your Simulation
-              <ArrowRight className="ml-2 w-4 h-4" />
-            </Button>
-            <Button
-              size="lg"
-              variant="outline"
-              className="text-base font-medium px-8"
-            >
-              Experience Failure Lab
-            </Button>
+            <Link href="/auth/sign-up">
+              <Button size="lg" className="bg-primary hover:bg-primary/90 text-base text-white font-medium px-8 w-full sm:w-auto">
+                Start Your Simulation
+                <ArrowRight className="ml-2 w-4 h-4" />
+              </Button>
+            </Link>
+            <Link href="/auth/sign-in">
+              <Button
+                size="lg"
+                variant="outline"
+                className="text-base font-medium px-8 w-full sm:w-auto"
+              >
+                Sign In to Dashboard
+              </Button>
+            </Link>
           </div>
         </div>
       </section>

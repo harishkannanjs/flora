@@ -7,7 +7,8 @@ import { Card } from '@/components/ui/card';
 import {
     Sparkles, X, Send, Bot,
     Loader2, Check, ArrowRight,
-    LayoutGrid, BookOpen
+    LayoutGrid, BookOpen, Plus,
+    Wand2
 } from 'lucide-react';
 
 interface Lesson {
@@ -65,12 +66,13 @@ export function AICourseDesigner({ onClose, onSave, initialData }: AICourseDesig
         }
     }, [messages]);
 
-    async function handleSend() {
-        if (!input.trim() || loading) return;
+    async function handleSend(forcedInput?: string) {
+        const textToSend = forcedInput || input.trim();
+        if (!textToSend || loading) return;
 
-        const userMessage: Message = { role: 'user', content: input.trim() };
+        const userMessage: Message = { role: 'user', content: textToSend };
         setMessages((prev) => [...prev, userMessage]);
-        setInput('');
+        if (!forcedInput) setInput('');
         setLoading(true);
 
         try {
@@ -80,16 +82,37 @@ export function AICourseDesigner({ onClose, onSave, initialData }: AICourseDesig
                 body: JSON.stringify({
                     messages: [...messages, userMessage],
                     role: 'educator',
-                    mode: 'designer'
+                    mode: 'designer',
+                    courseContext: initialData // Share initial metadata with AI
                 }),
             });
 
-            const data = await response.json();
-            if (data.content) {
-                setMessages((prev) => [...prev, { role: 'assistant', content: data.content }]);
+            if (!response.ok) throw new Error('Failed to fetch');
 
-                // Try to parse JSON from the response
-                const jsonMatch = data.content.match(/\{[\s\S]*\}/);
+            const reader = response.body?.getReader();
+            const textDecoder = new TextDecoder();
+
+            if (!reader) throw new Error('No reader available');
+
+            // Add placeholder for assistant message
+            setMessages((prev) => [...prev, { role: 'assistant', content: '' }]);
+
+            let fullText = '';
+            while (true) {
+                const { done, value } = await reader.read();
+                if (done) break;
+
+                const chunk = textDecoder.decode(value, { stream: true });
+                fullText += chunk;
+
+                setMessages((prev) => {
+                    const next = [...prev];
+                    next[next.length - 1].content = fullText;
+                    return next;
+                });
+
+                // Try to parse JSON from the accumulating text
+                const jsonMatch = fullText.match(/\{[\s\S]*\}/);
                 if (jsonMatch) {
                     try {
                         const parsed = JSON.parse(jsonMatch[0]);
@@ -97,12 +120,13 @@ export function AICourseDesigner({ onClose, onSave, initialData }: AICourseDesig
                             setStructure(parsed);
                         }
                     } catch (e) {
-                        console.error('Failed to parse course JSON:', e);
+                        // Silent fail while streaming until JSON is complete
                     }
                 }
             }
         } catch (error) {
             console.error('Designer error:', error);
+            setMessages((prev) => [...prev, { role: 'assistant', content: "I'm sorry, I encountered an error. Please try again." }]);
         } finally {
             setLoading(false);
         }
@@ -132,13 +156,31 @@ export function AICourseDesigner({ onClose, onSave, initialData }: AICourseDesig
                     <div className="flex-1 flex flex-col border-r border-border min-w-0">
                         <div className="flex-1 overflow-y-auto p-6 space-y-6" ref={scrollRef}>
                             {messages.map((m, i) => (
-                                <div key={i} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                                <div key={i} className={`flex flex-col ${m.role === 'user' ? 'items-end' : 'items-start'}`}>
                                     <div className={`max-w-[90%] p-4 rounded-3xl text-sm whitespace-pre-wrap ${m.role === 'user'
                                         ? 'bg-primary text-white rounded-tr-none shadow-lg'
                                         : 'bg-muted/50 text-foreground rounded-tl-none border border-border/50 backdrop-blur-sm'
                                         }`}>
                                         {m.content}
                                     </div>
+
+                                    {/* Inline CTA in Chat */}
+                                    {m.role === 'assistant' && structure && i === messages.length - 1 && (
+                                        <div className="mt-4 w-full max-w-sm">
+                                            <Button
+                                                className="w-full bg-primary hover:bg-primary/90 text-white rounded-xl shadow-xl animate-bounce-subtle flex items-center justify-center gap-2 h-11"
+                                                disabled={saving}
+                                                onClick={async () => {
+                                                    setSaving(true);
+                                                    await onSave(structure);
+                                                    setSaving(false);
+                                                }}
+                                            >
+                                                {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
+                                                Create "{structure.title}" Now
+                                            </Button>
+                                        </div>
+                                    )}
                                 </div>
                             ))}
                             {loading && (
@@ -152,6 +194,18 @@ export function AICourseDesigner({ onClose, onSave, initialData }: AICourseDesig
 
                         <div className="p-4 border-t border-border bg-muted/20">
                             <form onSubmit={(e) => { e.preventDefault(); handleSend(); }} className="flex gap-3">
+                                {messages.length > 1 && !structure && (
+                                    <Button
+                                        type="button"
+                                        variant="outline"
+                                        onClick={() => handleSend("Please finalize the course design now based on our discussion and output the JSON block.")}
+                                        className="h-12 border-primary/20 text-primary hover:bg-primary/5 rounded-2xl px-4 flex items-center gap-2"
+                                        disabled={loading}
+                                    >
+                                        <Wand2 className="w-4 h-4" />
+                                        <span className="hidden sm:inline">Generate Design</span>
+                                    </Button>
+                                )}
                                 <Input
                                     placeholder="Tell the AI what course you want to build..."
                                     value={input}

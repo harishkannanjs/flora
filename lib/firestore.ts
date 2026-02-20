@@ -198,12 +198,21 @@ export async function enrollWithCode(
             lastTopic: course.topics?.[0] ?? 'Getting Started',
             enrolledAt: serverTimestamp(),
         });
+
+        // Increment enrolledCount on the course
         await updateDoc(doc(db, 'courses', course.id), {
             enrolledCount: (course.enrolledCount ?? 0) + 1,
         });
 
+        // Log Activity
+        await logActivity(studentId, {
+            type: 'enrolled',
+            title: `Enrolled in "${course.title}"`,
+        });
+
         return { success: true };
-    } catch {
+    } catch (e) {
+        console.error('Enrollment error:', e);
         return { success: false, error: 'Something went wrong. Please try again.' };
     }
 }
